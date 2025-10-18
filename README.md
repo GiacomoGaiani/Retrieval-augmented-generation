@@ -35,7 +35,6 @@ git clone <your_repo_url>
 cd <project_folder>
 ```
 
-
 ### 2. Create a virtual environment (recommended)
 
 ```bash
@@ -70,7 +69,7 @@ Check or create `config.py`.
 You can define:
 
 ```python
-DEFAULT_EMBEDDER = "hf"  # or "instructor"
+DEFAULT_EMBEDDER = "hf"
 DEFAULT_EMBED_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 CHROMA_PERSIST_DIR = "chroma_db"
 RETRIEVAL_K = 5
@@ -219,7 +218,7 @@ This keeps all models in memory for much faster results and writes `benchmark_an
 
 ---
 
-## ✅ Summary
+## Summary
 
 | Version      | Core Idea                                        | Strength                                  | Trade-off             |
 | ------------ | ------------------------------------------------ | ----------------------------------------- | --------------------- |
