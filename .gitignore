@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+
+# Local env / secrets
+.env
+*.env
+
+# Chroma DB and embedding caches
+chroma_db/
+embeddings_cache/
+
+# Models / large files
+models/
+*.bin
+*.pt
+
+# VSCode / system files
+.vscode/
+.DS_Store
+Thumbs.db
