@@ -1,5 +1,5 @@
 from langchain_community.document_loaders import WebBaseLoader, TextLoader, PyPDFLoader
-from langchain.schema import Document
+from langchain_core.documents import Document
 import os
 from utils import logger
 

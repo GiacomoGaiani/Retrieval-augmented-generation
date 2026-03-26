@@ -1,5 +1,5 @@
 from typing import List, Optional
-from langchain.schema import Document
+from langchain_core.documents import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from config import CHROMA_PERSIST_DIR, CHUNK_SIZE, CHUNK_OVERLAP, DEFAULT_EMBEDDER, DEFAULT_EMBED_MODEL

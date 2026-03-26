@@ -1,0 +1,86 @@
+version: "3.9"
+
+# ---------------------------------------------------------------------------
+# RAG Pipeline – docker-compose
+#
+# Services:
+#   ollama   – local LLM server (GPU optional, falls back to CPU)
+#   rag      – the Python RAG application
+#
+# Volumes:
+#   ollama_data  – Ollama model weights (persisted across restarts)
+#   chroma_data  – ChromaDB vector database
+#
+# Usage:
+#   cp .env.example .env          # fill in your values
+#   docker compose up -d ollama   # start Ollama first
+#   docker compose run --rm rag python main.py index /app/docs
+#   docker compose run --rm rag python main.py query --version v3 \
+#       --question "What is task decomposition?"
+# ---------------------------------------------------------------------------
+
+services:
+
+  # ── Ollama (LLM sidecar) ────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: rag_ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_HOST_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Uncomment the section below if you have an NVIDIA GPU:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ── Pull the default model after Ollama is healthy ───────────────────────
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: rag_ollama_pull
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "ollama pull ${LLM_MODEL:-mistral}"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    restart: "no"
+
+  # ── RAG application ──────────────────────────────────────────────────────
+  rag:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag_app
+    restart: unless-stopped
+    depends_on:
+      ollama:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      # Override Ollama host so the app talks to the sidecar, not localhost
+      - OLLAMA_HOST=http://ollama:11434
+    volumes:
+      # Persist ChromaDB between runs
+      - chroma_data:/app/chroma_db
+      # Mount your local docs/ folder (read-only)
+      - ${DOCS_DIR:-./docs}:/app/docs:ro
+    # Keep the container running so you can exec into it
+    entrypoint: ["tail", "-f", "/dev/null"]
+
+volumes:
+  ollama_data:
+  chroma_data:

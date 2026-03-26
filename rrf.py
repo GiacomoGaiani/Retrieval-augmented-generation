@@ -1,5 +1,5 @@
 from typing import List, Tuple
-from langchain.schema import Document
+from langchain_core.documents import Document
 import json
 
 def reciprocal_rank_fusion(results: List[List[Document]], k=60) -> List[Tuple[Document, float]]:
