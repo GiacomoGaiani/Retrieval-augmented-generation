@@ -1,7 +1,11 @@
+cat > .gitignore << 'EOF'
 # Python
 __pycache__/
 *.py[cod]
 *.so
+
+# Virtual environment
+venv/
 
 # Local env / secrets
 .env
@@ -16,9 +20,17 @@ models/
 *.bin
 *.pt
 
+# Personal documents (not for sharing)
+docs/
+
+# W&B local logs and artifacts
+wandb/
+
+# Benchmark result CSVs (personal runs)
+*.csv
+
 # VSCode / system files
 .vscode/
 .DS_Store
 Thumbs.db
-venv/
-.env
+EOF
