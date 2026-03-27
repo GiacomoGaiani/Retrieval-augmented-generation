@@ -45,7 +45,7 @@ def query(
     model_to_use = llm_model or LLM_MODEL
     set_log_level(verbose=verbose, debug=debug)
 
-    vs = load_vectorstore(persist_dir, embedder="instructor", embed_model="hkunlp/instructor-base", init_embedder=False)
+    vs = load_vectorstore(persist_dir, embedder="instructor", embed_model="hkunlp/instructor-base", init_embedder=True)
 
     if version == "v1":
         res = run_basic_rag(question, vs, model=model_to_use)

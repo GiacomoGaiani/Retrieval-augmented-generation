@@ -2,9 +2,9 @@
 tests/persistent_benchmark.py
 ------------------------------
 Keeps all models in memory across questions for faster benchmarking.
-Writes benchmark_answer_results_persistent.csv (same schema as before).
+Writes benchmark_answer_results_persistent.csv.
 
-Extra metrics logged to W&B per question:
+Metrics logged to W&B per question:
   - query_time_s        : end-to-end wall-clock seconds (retrieval + LLM)
   - answer_length       : character count of the answer
   - answer_word_count   : word count of the answer
@@ -17,6 +17,9 @@ Usage:
 import csv
 import os
 import time
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ---------------------------------------------------------------------------
 # W&B setup
@@ -64,8 +67,6 @@ QUESTIONS = [
     "What is task decomposition?",
     "How does RAG improve factual accuracy?",
     "Explain goal-oriented behavior in AI systems.",
-    "What are the limitations of transformer models?",
-    "How is context window size related to model performance?",
 ]
 
 VERSIONS = {
@@ -80,12 +81,11 @@ OUTPUT_CSV = "benchmark_answer_results_persistent.csv"
 def main():
     run = _init_wandb()
 
-    # Load vectorstore once — reused for all versions/questions
     vs = load_vectorstore(
         CHROMA_PERSIST_DIR,
         embedder=DEFAULT_EMBEDDER,
         embed_model=DEFAULT_EMBED_MODEL,
-        init_embedder=False,
+        init_embedder=True,
     )
 
     rows = []
@@ -125,7 +125,6 @@ def main():
                     "answer_word_count": row["answer_word_count"],
                 })
 
-    # Write CSV
     with open(OUTPUT_CSV, "w", newline="") as f:
         fieldnames = ["version", "question", "query_time_s",
                       "answer_length", "answer_word_count", "answer_snippet"]
@@ -136,7 +135,6 @@ def main():
     print(f"\nCSV written → {OUTPUT_CSV}")
 
     if run is not None:
-        # Summary table artifact
         artifact = wandb.Artifact("benchmark_results", type="dataset")
         artifact.add_file(OUTPUT_CSV)
         run.log_artifact(artifact)

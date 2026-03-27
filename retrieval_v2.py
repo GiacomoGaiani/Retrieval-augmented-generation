@@ -1,5 +1,5 @@
 from typing import List, Optional
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage
 from rrf import reciprocal_rank_fusion
@@ -50,7 +50,7 @@ def run_rag_fusion(question: str, vectorstore, num_queries: int = 4, model: Opti
 
     retriever = vectorstore.as_retriever(search_kwargs={"k": RETRIEVAL_K})
     logger.info("→ Retrieving documents for %d queries (top %d each)...", len(queries), RETRIEVAL_K)
-    all_lists = [retriever.get_relevant_documents(q) for q in queries]
+    all_lists = [retriever.invoke(q) for q in queries]
 
     logger.info("→ Applying Reciprocal Rank Fusion (RRF_K=%d)...", RRF_K)
     fused = reciprocal_rank_fusion(all_lists, k=RRF_K)

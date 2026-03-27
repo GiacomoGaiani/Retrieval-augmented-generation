@@ -1,12 +1,12 @@
 from typing import List, Optional
 from langchain_core.documents import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import Chroma
 from config import CHROMA_PERSIST_DIR, CHUNK_SIZE, CHUNK_OVERLAP, DEFAULT_EMBEDDER, DEFAULT_EMBED_MODEL
 from utils import logger
 
 def _get_instructor_embeddings(model_name: str = "hkunlp/instructor-base"):
-    from langchain.embeddings import HuggingFaceInstructEmbeddings
+    from langchain_community.embeddings import HuggingFaceInstructEmbeddings
     return HuggingFaceInstructEmbeddings(model_name=model_name)
 
 def _get_hf_minilm(model_name: str = "sentence-transformers/all-MiniLM-L6-v2"):

@@ -1,5 +1,5 @@
 from typing import List, Optional
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage
 from config import RETRIEVAL_K, LLM_MODEL
@@ -13,7 +13,7 @@ def run_basic_rag(question: str, vectorstore, model: Optional[str] = None) -> st
 
     logger.info("→ Retrieving top %d documents for question: %s", RETRIEVAL_K, question)
     retriever = vectorstore.as_retriever(search_kwargs={"k": RETRIEVAL_K})
-    docs: List = retriever.get_relevant_documents(question)
+    docs: List = retriever.invoke(question)
 
     logger.info("→ Retrieved %d documents.", len(docs))
     if len(docs) > 0:

@@ -2,10 +2,11 @@
 tests/benchmark_retrieval_only.py
 ----------------------------------
 Benchmarks retrieval performance only — no LLM calls.
-Measures latency and a simple recall proxy (number of unique chunks returned).
+Since retrieval is embedded inside the pipeline functions, we time the full
+retrieve step by calling the vectorstore directly, bypassing the LLM.
 
 Outputs:
-  - benchmark_retrieval_only.csv  (same as before)
+  - benchmark_retrieval_only.csv
   - Weights & Biases run per retrieval version
 
 Metrics logged per query:
@@ -22,6 +23,10 @@ Usage:
 import csv
 import os
 import time
+import sys
+
+# Make sure project root is on the path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ---------------------------------------------------------------------------
 # W&B setup
@@ -56,33 +61,25 @@ def _init_wandb(version: str):
 
 
 # ---------------------------------------------------------------------------
-# Retrieval wrappers
+# Imports
 # ---------------------------------------------------------------------------
 from indexer import load_vectorstore
-from config import CHROMA_PERSIST_DIR, DEFAULT_EMBEDDER, DEFAULT_EMBED_MODEL, RETRIEVAL_K
-from retrieval_v1 import retrieve as retrieve_v1
-from retrieval_v2 import retrieve as retrieve_v2
-from retrieval_v3 import retrieve as retrieve_v3
-
-RETRIEVERS = {
-    "v1": retrieve_v1,
-    "v2": retrieve_v2,
-    "v3": retrieve_v3,
-}
+from config import (
+    CHROMA_PERSIST_DIR, DEFAULT_EMBEDDER, DEFAULT_EMBED_MODEL, RETRIEVAL_K
+)
+from retrieval_v2 import generate_queries_simple
+from rrf import reciprocal_rank_fusion
 
 QUESTIONS = [
     "What is task decomposition?",
     "How does RAG improve factual accuracy?",
     "Explain goal-oriented behavior in AI systems.",
-    "What are the limitations of transformer models?",
-    "How is context window size related to model performance?",
 ]
 
 OUTPUT_CSV = "benchmark_retrieval_only.csv"
 
 
 def unique_sources(docs) -> int:
-    """Count distinct source filenames across retrieved documents."""
     sources = set()
     for doc in docs:
         src = getattr(doc, "metadata", {}).get("source", "unknown")
@@ -90,13 +87,38 @@ def unique_sources(docs) -> int:
     return len(sources)
 
 
+def retrieve_v1(question, vs):
+    """Basic single-query retrieval."""
+    retriever = vs.as_retriever(search_kwargs={"k": RETRIEVAL_K})
+    return retriever.invoke(question)
+
+
+def retrieve_v2(question, vs):
+    """Multi-query retrieval with RRF fusion (no LLM for final answer)."""
+    queries = generate_queries_simple(question, n=4)
+    retriever = vs.as_retriever(search_kwargs={"k": RETRIEVAL_K})
+    all_lists = [retriever.invoke(q) for q in queries]
+    return reciprocal_rank_fusion(all_lists)
+
+
+def retrieve_v3(question, vs):
+    """Same as v2 retrieval — advanced RAG uses same retrieval, different generation."""
+    return retrieve_v2(question, vs)
+
+
+RETRIEVERS = {
+    "v1": retrieve_v1,
+    "v2": retrieve_v2,
+    "v3": retrieve_v3,
+}
+
+
 def main():
-    # Load vectorstore once
     vs = load_vectorstore(
         CHROMA_PERSIST_DIR,
         embedder=DEFAULT_EMBEDDER,
         embed_model=DEFAULT_EMBED_MODEL,
-        init_embedder=False,
+        init_embedder=True,
     )
 
     rows = []
@@ -110,7 +132,7 @@ def main():
 
         for question in QUESTIONS:
             start = time.perf_counter()
-            docs = retrieve_fn(question, vs, k=RETRIEVAL_K)
+            docs = retrieve_fn(question, vs)
             elapsed = time.perf_counter() - start
 
             n_chunks = len(docs)
@@ -132,7 +154,6 @@ def main():
                 wandb.log(row)
 
         if run is not None:
-            # Log per-version summary statistics
             version_rows = [r for r in rows if r["version"] == version]
             times = [r["retrieval_time_s"] for r in version_rows]
             wandb.log({
@@ -142,7 +163,6 @@ def main():
             })
             wandb.finish()
 
-    # Write CSV
     with open(OUTPUT_CSV, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         writer.writeheader()
