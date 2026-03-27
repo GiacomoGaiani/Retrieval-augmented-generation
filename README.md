@@ -207,6 +207,7 @@ WANDB_PROJECT=rag-benchmark
     ├── test_benchmark.py            # Full pipeline benchmark — logs query_time_s, answer_length to W&B
     ├── benchmark_retrieval_only.py  # Retrieval-only benchmark — logs retrieval_time_s, chunks, sources to W&B
     └── persistent_benchmark.py     # In-memory benchmark — logs query_time_s, answer_word_count, uploads CSV artifact to W&B
+```
 
 ---
 
