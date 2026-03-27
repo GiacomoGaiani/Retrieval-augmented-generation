@@ -157,6 +157,60 @@ docker compose --profile host-ollama run --rm rag-host -m tests.persistent_bench
 
 ---
 
+## Experiment Tracking with Weights & Biases
+
+All three benchmark scripts integrate with [Weights & Biases](https://wandb.ai) for experiment tracking. Each run logs metrics, hyperparameters, and results directly to your W&B dashboard, making it easy to compare pipeline versions across experiments.
+
+### What gets tracked
+
+| Script | W&B group | Metrics logged |
+|---|---|---|
+| `benchmark_retrieval_only.py` | `benchmark_retrieval_only` | `retrieval_time_s`, `chunks_returned`, `unique_sources`, `mean/max/min_retrieval_time_s` |
+| `test_benchmark.py` | `test_benchmark` | `query_time_s`, `answer_length` |
+| `persistent_benchmark.py` | `persistent_benchmark` | `query_time_s`, `answer_length`, `answer_word_count` + CSV uploaded as artifact |
+
+Each run also records its full configuration as hyperparameters: `llm_model`, `retrieval_k`, `chunk_size`, `chunk_overlap`, `rrf_k`, `embedder`, `embed_model`.
+
+### Setup
+
+Add your W&B API key and project name to `.env`:
+```
+WANDB_API_KEY=your_wandb_key_here
+WANDB_PROJECT=rag-benchmark
+```
+
+W&B is an **optional dependency** — all scripts fall back gracefully if the package is missing or if the key is not set. To explicitly disable tracking without removing the key:
+```bash
+WANDB_MODE=disabled python -m tests.benchmark_retrieval_only
+```
+
+### Docker
+
+The `WANDB_API_KEY` is passed through automatically via the `env_file` in `docker-compose.yml`. No extra steps needed:
+```bash
+docker compose --profile host-ollama run --rm rag-host -m tests.benchmark_retrieval_only
+```
+```
+
+---
+
+**Update the `.env.example`** — add these two lines:
+```
+WANDB_API_KEY=your_wandb_key_here
+WANDB_PROJECT=rag-benchmark
+```
+
+---
+
+**Update the project structure block** — replace the `tests/` lines with:
+```
+└── tests/
+    ├── test_benchmark.py            # Full pipeline benchmark — logs query_time_s, answer_length to W&B
+    ├── benchmark_retrieval_only.py  # Retrieval-only benchmark — logs retrieval_time_s, chunks, sources to W&B
+    └── persistent_benchmark.py     # In-memory benchmark — logs query_time_s, answer_word_count, uploads CSV artifact to W&B
+
+---
+
 ## Running Locally (without Docker)
 
 ### 1. Create and activate a virtual environment
