@@ -190,7 +190,6 @@ The `WANDB_API_KEY` is passed through automatically via the `env_file` in `docke
 ```bash
 docker compose --profile host-ollama run --rm rag-host -m tests.benchmark_retrieval_only
 ```
-```
 
 ---
 
