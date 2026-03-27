@@ -36,5 +36,5 @@ EOF
 VOLUME ["/app/chroma_db", "/app/docs"]
 
 # Default command: show CLI help. Override in docker-compose or `docker run`.
-ENTRYPOINT ["python", "main.py"]
-CMD ["--help"]
+ENTRYPOINT ["python"]
+CMD ["main.py", "--help"]

@@ -1,27 +1,30 @@
-version: "3.9"
-
 # ---------------------------------------------------------------------------
 # RAG Pipeline – docker-compose
 #
 # Services:
-#   ollama   – local LLM server (GPU optional, falls back to CPU)
-#   rag      – the Python RAG application
+#   ollama       – local LLM server (skip if USE_HOST_OLLAMA=true)
+#   ollama-pull  – pulls the default model once Ollama is healthy
+#   rag          – the Python RAG application
 #
 # Volumes:
 #   ollama_data  – Ollama model weights (persisted across restarts)
 #   chroma_data  – ChromaDB vector database
 #
-# Usage:
-#   cp .env.example .env          # fill in your values
-#   docker compose up -d ollama   # start Ollama first
+# Usage (standard – Ollama inside Docker):
+#   cp .env.example .env
+#   docker compose up -d ollama
 #   docker compose run --rm rag python main.py index /app/docs
 #   docker compose run --rm rag python main.py query --version v3 \
 #       --question "What is task decomposition?"
+#
+# Usage (host Ollama already running):
+#   docker compose --profile host-ollama run --rm rag-host \
+#       python -m pytest tests/ -v
 # ---------------------------------------------------------------------------
 
 services:
 
-  # ── Ollama (LLM sidecar) ────────────────────────────────────────────────
+  # ── Ollama (LLM sidecar) ─────────────────────────────────────────────────
   ollama:
     image: ollama/ollama:latest
     container_name: rag_ollama
@@ -30,7 +33,7 @@ services:
       - "${OLLAMA_HOST_PORT:-11434}:11434"
     volumes:
       - ollama_data:/root/.ollama
-    # Uncomment the section below if you have an NVIDIA GPU:
+    # Uncomment for NVIDIA GPU:
     # deploy:
     #   resources:
     #     reservations:
@@ -58,28 +61,42 @@ services:
       - OLLAMA_HOST=http://ollama:11434
     restart: "no"
 
-  # ── RAG application ──────────────────────────────────────────────────────
+  # ── RAG application (uses containerized Ollama) ──────────────────────────
   rag:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: rag_app
-    restart: unless-stopped
     depends_on:
       ollama:
         condition: service_healthy
     env_file:
       - .env
     environment:
-      # Override Ollama host so the app talks to the sidecar, not localhost
       - OLLAMA_HOST=http://ollama:11434
     volumes:
-      # Persist ChromaDB between runs
       - chroma_data:/app/chroma_db
-      # Mount your local docs/ folder (read-only)
       - ${DOCS_DIR:-./docs}:/app/docs:ro
-    # Keep the container running so you can exec into it
     entrypoint: ["tail", "-f", "/dev/null"]
+
+  # ── RAG application (uses Ollama already running on the host) ────────────
+  # Use this profile when you don't want Docker to manage Ollama.
+  # Works on Windows/Mac automatically; on Linux requires Docker 20.10+.
+  rag-host:
+    profiles: ["host-ollama"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rag_app_host
+    env_file:
+      - .env
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - chroma_data:/app/chroma_db
+      - ${DOCS_DIR:-./docs}:/app/docs:ro
 
 volumes:
   ollama_data:
